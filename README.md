@@ -45,12 +45,28 @@ origins are matched against `${distro_codename}`, a macro that
 only been verified end-to-end on Debian 12 "bookworm"; other releases
 should work the same way but haven't been tested.
 
+## Branches
+
+- `production` — stable, tested releases. This is what should run on
+  real Raspberry Pi devices in the field.
+- `main` — active development and testing. May be unstable; changes
+  land here first and only get promoted to `production` once verified.
+
 ## Installation
 
-Clone the repository on the device and run the installer as root:
+Pick the branch for your use case (see [Branches](#branches) above),
+clone the repository on the device, and run the installer as root:
 
 ```bash
-git clone https://github.com/MrWebAl/ct-rpi-fleet-maintenance.git
+# production (real devices)
+git clone -b production https://github.com/MrWebAl/ct-rpi-fleet-maintenance.git
+cd ct-rpi-fleet-maintenance
+sudo ./install.sh
+```
+
+```bash
+# main (testing only)
+git clone -b main https://github.com/MrWebAl/ct-rpi-fleet-maintenance.git
 cd ct-rpi-fleet-maintenance
 sudo ./install.sh
 ```
@@ -58,6 +74,13 @@ sudo ./install.sh
 Or, without cloning:
 
 ```bash
+# production
+curl -fsSL https://raw.githubusercontent.com/MrWebAl/ct-rpi-fleet-maintenance/production/install.sh -o install.sh
+sudo bash install.sh
+```
+
+```bash
+# main (testing only)
 curl -fsSL https://raw.githubusercontent.com/MrWebAl/ct-rpi-fleet-maintenance/main/install.sh -o install.sh
 sudo bash install.sh
 ```
