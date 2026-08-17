@@ -15,7 +15,8 @@ set -euo pipefail
 # No automatic reboot by apt
 # ============================================================
 
-VERSION="1.0.0"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VERSION="$(cat "${SCRIPT_DIR}/VERSION" 2>/dev/null || echo "1.0.0")"
 
 if [ "$(id -u)" -ne 0 ]; then
     echo "ERROR: this script must be run as root."
@@ -82,16 +83,43 @@ APT::Periodic::Unattended-Upgrade "1";
 EOF
 
 # ------------------------------------------------------------
-# 3CX
-# Only 3cxsbc is explicitly allowed
+# Allowed origins
+#
+# NOTE: Unattended-Upgrade::Package-Whitelist is NOT used here.
+# Once that list is non-empty, unattended-upgrades restricts
+# ALL automatic upgrades to only the whitelisted packages,
+# silently disabling regular security updates.
+#
+# Debian's own origin/label lines are already enabled by default
+# in 50unattended-upgrades. This file adds the origins needed for
+# a Raspberry Pi running 3cxsbc: Raspberry Pi Foundation, Raspbian,
+# and 3CX (stable channel only - matched by codename, so the
+# bookworm-testing repo that the 3CX installer also configures is
+# never picked up here, in addition to its own low pin priority).
 # ------------------------------------------------------------
 
 echo
-echo "==> Configuring 3cxsbc automatic updates"
+echo "==> Removing legacy 3cxsbc whitelist config (if present)"
 
-cat > /etc/apt/apt.conf.d/52unattended-upgrades-3cx <<'EOF'
-Unattended-Upgrade::Package-Whitelist {
-    "3cxsbc";
+rm -f /etc/apt/apt.conf.d/52unattended-upgrades-3cx
+
+echo
+echo "==> Configuring additional allowed origins (Raspberry Pi, 3cxsbc)"
+
+cat > /etc/apt/apt.conf.d/80unattended-upgrades-3cx <<'EOF'
+Unattended-Upgrade::Origins-Pattern {
+        // Raspberry Pi Foundation packages.
+        // No archive/suite constraint: archive.raspberrypi.com's Release
+        // file reports Suite: oldstable even for the current release, so
+        // matching on origin+codename only is what actually works.
+        "origin=Raspberry Pi Foundation,codename=${distro_codename}";
+
+        // Raspbian packages (legacy repo, not present on current
+        // Raspberry Pi OS images, kept for older installs)
+        "origin=Raspbian,codename=${distro_codename}";
+
+        // 3cxsbc (stable channel only, not bookworm-testing)
+        "origin=3CX,label=3CX,codename=${distro_codename}";
 };
 EOF
 
@@ -293,7 +321,7 @@ echo "============================================================"
 echo " unattended-upgrades dry-run"
 echo "============================================================"
 
-unattended-upgrade --dry-run --debug
+unattended-upgrade --dry-run --debug || true
 
 # ------------------------------------------------------------
 # Done
@@ -307,7 +335,7 @@ echo
 echo "Version:             ${VERSION}"
 echo "APT update:          02:30 (+15m random)"
 echo "unattended-upgrade:  03:00 (+30m random)"
-echo "3cxsbc:              enabled"
+echo "3cxsbc (stable):     via unattended-upgrade at 03:00"
 echo "full-upgrade:        disabled"
 echo "automatic reboot:    every 15 days, around 04:00"
 echo
